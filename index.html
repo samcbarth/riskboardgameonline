@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Risk Online — Hot-Seat</title>
+<style>
+  :root{
+    --bg:#10151c; --panel:#1a222d; --panel2:#212c3a; --line:#31415466;
+    --text:#e8eef5; --muted:#93a4b8; --accent:#4da3ff; --sea:#152230;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden;}
+  header{display:flex; align-items:center; gap:14px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  header h1{font-size:18px; letter-spacing:1px;}
+  header h1 span{color:var(--accent);}
+  .chip{display:inline-flex; align-items:center; gap:7px; background:var(--panel2); border-radius:20px; padding:4px 12px; font-size:13px;}
+  .dot{width:12px; height:12px; border-radius:50%; display:inline-block;}
+  #phaseMsg{font-size:13px; color:var(--muted); flex:1; min-width:200px;}
+  button{background:var(--panel2); color:var(--text); border:1px solid #3a4c62; border-radius:6px; padding:6px 13px; font-size:13px; cursor:pointer;}
+  button:hover:not(:disabled){background:#2c3b4d; border-color:var(--accent);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  button.primary{background:#1d4ed8; border-color:#3b82f6;}
+  button.primary:hover:not(:disabled){background:#2563eb;}
+  button.danger{background:#7f1d1d; border-color:#b91c1c;}
+  main{flex:1; display:flex; min-height:0;}
+  #mapWrap{flex:1; background:var(--sea); position:relative; min-width:0;}
+  #mapWrap svg{width:100%; height:100%; display:block;}
+  aside{width:300px; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0;}
+  aside h3{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding:10px 12px 4px;}
+  #players{padding:0 12px;}
+  .prow{display:flex; align-items:center; gap:8px; font-size:13px; padding:5px 8px; border-radius:6px; margin-bottom:3px;}
+  .prow.current{background:var(--panel2); outline:1px solid #3a4c62;}
+  .prow .nm{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .prow .st{color:var(--muted); font-size:12px;}
+  .prow.dead{opacity:.35; text-decoration:line-through;}
+  #battlePanel{padding:8px 12px; border-top:1px solid var(--line); font-size:13px; display:none;}
+  .diceRow{display:flex; gap:6px; margin:6px 0; align-items:center;}
+  .die{width:30px; height:30px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; background:#fff; color:#111;}
+  .die.def{background:#111; color:#fff; border:1px solid #555;}
+  .die.win{outline:2px solid #22c55e;}
+  .die.lose{outline:2px solid #ef4444;}
+  #log{flex:1; overflow-y:auto; padding:6px 12px 12px; font-size:12px; line-height:1.55; color:var(--muted); border-top:1px solid var(--line);}
+  #log b{color:var(--text);}
+  #log .lt{display:block; padding:2px 0; border-bottom:1px dashed #263243;}
+  /* map elements */
+  .edge{stroke:#3d5570; stroke-width:1.2; opacity:.55;}
+  .terr circle{stroke:#0b0f14; stroke-width:2; cursor:pointer; transition:r .1s;}
+  .terr:hover circle{stroke:#fff;}
+  .terr.sel circle{stroke:#fff; stroke-width:3;}
+  .terr.target circle{stroke:#ffd166; stroke-width:3; stroke-dasharray:4 3;}
+  .terr text{pointer-events:none; text-anchor:middle;}
+  .terr .army{font-size:13px; font-weight:800; fill:#fff; paint-order:stroke; stroke:#000; stroke-width:3px;}
+  .terr .tname{font-size:8.5px; fill:#c8d6e5; paint-order:stroke; stroke:#0b0f14; stroke-width:2.5px;}
+  .contLabel{font-size:13px; font-weight:700; fill:#ffffff22; letter-spacing:2px; text-anchor:middle; pointer-events:none;}
+  /* modal */
+  .overlay{position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; z-index:50;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--panel); border:1px solid #3a4c62; border-radius:12px; padding:20px; width:min(560px, 92vw); max-height:88vh; overflow-y:auto;}
+  .modal h2{font-size:17px; margin-bottom:12px;}
+  .modal p{font-size:13px; color:var(--muted); margin-bottom:10px; line-height:1.5;}
+  .mrow{display:flex; gap:10px; margin-top:14px; justify-content:flex-end; flex-wrap:wrap;}
+  input[type=text], input[type=number], select{background:var(--panel2); border:1px solid #3a4c62; color:var(--text); border-radius:6px; padding:7px 9px; font-size:14px;}
+  input[type=range]{width:100%;}
+  .setupRow{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .card{display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:104px; height:76px; border:1px solid #3a4c62; border-radius:8px; background:var(--panel2); cursor:pointer; font-size:11px; text-align:center; padding:6px;}
+  .card.selc{outline:2px solid var(--accent);}
+  .card .sym{font-size:20px;}
+  #cardsBox{display:flex; flex-wrap:wrap; gap:8px;}
+  #winBanner{font-size:22px; text-align:center; padding:10px;}
+  @media (max-width:800px){ main{flex-direction:column;} aside{width:100%; height:40%;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>RISK <span>ONLINE</span></h1>
+  <span class="chip" id="turnChip"><span class="dot" id="turnDot"></span><span id="turnName">—</span></span>
+  <span class="chip" id="phaseChip">Setup</span>
+  <span id="phaseMsg"></span>
+  <button id="btnCards">Cards (0)</button>
+  <button id="btnAction" class="primary" style="display:none">End Phase</button>
+  <button id="btnAuto" style="display:none">Auto-place</button>
+  <button id="btnHelp">Rules</button>
+  <button id="btnNew" class="danger">New Game</button>
+</header>
+<main>
+  <div id="mapWrap">
+    <svg viewBox="0 0 1000 620" id="map"></svg>
+  </div>
+  <aside>
+    <h3>Players</h3>
+    <div id="players"></div>
+    <div id="battlePanel">
+      <div style="display:flex;justify-content:space-between;font-weight:600" id="battleTitle"></div>
+      <div class="diceRow" id="atkDice"></div>
+      <div class="diceRow" id="defDice"></div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+        <label style="font-size:12px">Dice: <select id="diceSel"></select></label>
+        <button id="btnRoll" class="primary">Roll</button>
+        <button id="btnBlitz">Blitz</button>
+        <button id="btnCancelAtk">Cancel</button>
+      </div>
+    </div>
+    <h3>Game Log</h3>
+    <div id="log"></div>
+  </aside>
+</main>
+
+<!-- Setup modal -->
+<div class="overlay show" id="setupOv"><div class="modal">
+  <h2>🌍 New Game of Risk</h2>
+  <p>Hot-seat play: players share this screen and take turns. Territories are dealt randomly, then players place their starting armies.</p>
+  <div class="setupRow"><label>Players:</label>
+    <select id="numPlayers"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+  </div>
+  <div id="nameRows"></div>
+  <div class="mrow">
+    <button id="btnResume" style="display:none">Resume saved game</button>
+    <button class="primary" id="btnStart">Start Game</button>
+  </div>
+</div></div>
+
+<!-- Generic modal -->
+<div class="overlay" id="genOv"><div class="modal" id="genModal"></div></div>
+
+<script>
+"use strict";
+/* ---------------- Static data: classic Risk board ---------------- */
+const CONTINENTS = {
+  NA:{name:"North America", bonus:5, color:"#b58840"},
+  SA:{name:"South America", bonus:2, color:"#b0483e"},
+  EU:{name:"Europe",        bonus:5, color:"#3f6fb5"},
+  AF:{name:"Africa",        bonus:3, color:"#8a6d3b"},
+  AS:{name:"Asia",          bonus:7, color:"#3e8f5a"},
+  AU:{name:"Australia",     bonus:2, color:"#8f5aa0"},
+};
+// id, name, continent, x, y, adjacents (standard Risk adjacency graph)
+const T = [
+ ["alaska","Alaska","NA",52,100,["nwt","alberta","kamchatka"]],
+ ["nwt","Northwest Terr.","NA",145,85,["alaska","alberta","ontario","greenland"]],
+ ["greenland","Greenland","NA",305,55,["nwt","ontario","quebec","iceland"]],
+ ["alberta","Alberta","NA",130,155,["alaska","nwt","ontario","wus"]],
+ ["ontario","Ontario","NA",205,150,["nwt","alberta","greenland","quebec","wus","eus"]],
+ ["quebec","Quebec","NA",272,148,["greenland","ontario","eus"]],
+ ["wus","Western US","NA",135,222,["alberta","ontario","eus","camerica"]],
+ ["eus","Eastern US","NA",215,230,["ontario","quebec","wus","camerica"]],
+ ["camerica","Central America","NA",160,295,["wus","eus","venezuela"]],
+ ["venezuela","Venezuela","SA",228,352,["camerica","peru","brazil"]],
+ ["peru","Peru","SA",238,430,["venezuela","brazil","argentina"]],
+ ["brazil","Brazil","SA",305,400,["venezuela","peru","argentina","nafrica"]],
+ ["argentina","Argentina","SA",268,505,["peru","brazil"]],
+ ["iceland","Iceland","EU",405,100,["greenland","gb","scandinavia"]],
+ ["scandinavia","Scandinavia","EU",492,88,["iceland","gb","neurope","ukraine"]],
+ ["ukraine","Ukraine","EU",575,135,["scandinavia","neurope","seurope","ural","afghanistan","meast"]],
+ ["gb","Great Britain","EU",418,168,["iceland","scandinavia","neurope","weurope"]],
+ ["neurope","Northern Europe","EU",487,178,["gb","scandinavia","ukraine","seurope","weurope"]],
+ ["weurope","Western Europe","EU",428,240,["gb","neurope","seurope","nafrica"]],
+ ["seurope","Southern Europe","EU",505,232,["weurope","neurope","ukraine","meast","egypt","nafrica"]],
+ ["nafrica","North Africa","AF",455,335,["brazil","weurope","seurope","egypt","eafrica","congo"]],
+ ["egypt","Egypt","AF",525,308,["seurope","nafrica","eafrica","meast"]],
+ ["eafrica","East Africa","AF",565,388,["egypt","nafrica","congo","safrica","madagascar","meast"]],
+ ["congo","Congo","AF",512,435,["nafrica","eafrica","safrica"]],
+ ["safrica","South Africa","AF",528,515,["congo","eafrica","madagascar"]],
+ ["madagascar","Madagascar","AF",605,505,["eafrica","safrica"]],
+ ["ural","Ural","AS",658,115,["ukraine","siberia","china","afghanistan"]],
+ ["siberia","Siberia","AS",718,80,["ural","yakutsk","irkutsk","mongolia","china"]],
+ ["yakutsk","Yakutsk","AS",793,60,["siberia","kamchatka","irkutsk"]],
+ ["kamchatka","Kamchatka","AS",875,78,["yakutsk","irkutsk","mongolia","japan","alaska"]],
+ ["irkutsk","Irkutsk","AS",778,128,["siberia","yakutsk","kamchatka","mongolia"]],
+ ["mongolia","Mongolia","AS",793,188,["siberia","irkutsk","kamchatka","japan","china"]],
+ ["japan","Japan","AS",893,205,["kamchatka","mongolia"]],
+ ["afghanistan","Afghanistan","AS",645,205,["ukraine","ural","china","india","meast"]],
+ ["china","China","AS",745,248,["ural","siberia","mongolia","afghanistan","india","siam"]],
+ ["meast","Middle East","AS",585,278,["ukraine","seurope","egypt","eafrica","afghanistan","india"]],
+ ["india","India","AS",685,302,["meast","afghanistan","china","siam"]],
+ ["siam","Siam","AS",755,322,["india","china","indonesia"]],
+ ["indonesia","Indonesia","AU",785,405,["siam","newguinea","waustralia"]],
+ ["newguinea","New Guinea","AU",875,392,["indonesia","waustralia","eaustralia"]],
+ ["waustralia","W. Australia","AU",805,495,["indonesia","newguinea","eaustralia"]],
+ ["eaustralia","E. Australia","AU",885,485,["newguinea","waustralia"]],
+];
+const TERR = {}; T.forEach(([id,name,cont,x,y,adj])=>TERR[id]={id,name,cont,x,y,adj});
+const CONT_LABELS = [["NORTH AMERICA",170,45],["SOUTH AMERICA",300,545],["EUROPE",470,60],["AFRICA",460,560],["ASIA",720,30],["AUSTRALIA",860,555]];
+const PLAYER_COLORS = ["#e74c3c","#3498db","#2ecc71","#f1c40f","#9b59b6","#e67e22"];
+const START_ARMIES = {2:40,3:35,4:30,5:25,6:20};
+const TRADE_VALUES = [4,6,8,10,12,15]; // then +5 each
+const SYMBOLS = ["Infantry","Cavalry","Artillery"]; const SYM_ICON = {Infantry:"🚶",Cavalry:"🐎",Artillery:"🎖️",Wild:"🃏"};
+const SAVE_KEY = "risk-hotseat-save-v1";
+
+/* ---------------- State ---------------- */
+let S = null;          // game state (serializable)
+let sel = null;        // selected territory id (attack/fortify source)
+let atkTarget = null;  // attack target id
+let pendingConquest = null;
+
+const $ = id=>document.getElementById(id);
+const cur = ()=>S.players[S.current];
+const terrOf = p=>Object.keys(S.terr).filter(t=>S.terr[t].owner===p);
+const shuffle = a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const roll = n=>Array.from({length:n},()=>1+Math.floor(Math.random()*6)).sort((a,b)=>b-a);
+
+function newGame(names){
+  const n = names.length;
+  const deck = shuffle(T.map((t,i)=>({terr:t[0], sym:SYMBOLS[i%3]})).concat([{terr:null,sym:"Wild"},{terr:null,sym:"Wild"}]));
+  S = {
+    players: names.map((nm,i)=>({name:nm, color:PLAYER_COLORS[i], cards:[], alive:true})),
+    terr:{}, deck, discard:[], tradeCount:0,
+    current:0, phase:"placement", reinf:0, toPlace:[], conquered:false, fortified:false, turn:0,
+  };
+  // deal territories round-robin from a shuffled list, 1 army each
+  const ids = shuffle(Object.keys(TERR));
+  ids.forEach((t,i)=>S.terr[t]={owner:i%n, armies:1});
+  const total = START_ARMIES[n];
+  S.toPlace = S.players.map((_,i)=>total - terrOf(i).length);
+  S.current = 0;
+  log(`New game: ${names.join(", ")}. Territories dealt — place your remaining armies (click your territory; Shift-click places 5).`);
+  render();
+}
+
+/* ---------------- Reinforcement math ---------------- */
+function reinforcementsFor(p){
+  const owned = terrOf(p);
+  let r = Math.max(3, Math.floor(owned.length/3));
+  const bonuses = [];
+  for(const c in CONTINENTS){
+    if(T.filter(t=>t[2]===c).every(t=>S.terr[t[0]].owner===p)){ r += CONTINENTS[c].bonus; bonuses.push(`${CONTINENTS[c].name} +${CONTINENTS[c].bonus}`); }
+  }
+  return {r, bonuses};
+}
+function tradeValue(){ return S.tradeCount < TRADE_VALUES.length ? TRADE_VALUES[S.tradeCount] : TRADE_VALUES[TRADE_VALUES.length-1] + 5*(S.tradeCount - TRADE_VALUES.length + 1); }
+
+/* ---------------- Turn flow ---------------- */
+function startTurn(){
+  S.phase = "reinforce"; S.conquered = false; S.fortified = false; S.turn++;
+  const {r, bonuses} = reinforcementsFor(S.current);
+  S.reinf = r;
+  log(`<b>${cur().name}</b>'s turn. Reinforcements: ${r}${bonuses.length?` (incl. ${bonuses.join(", ")})`:""}.`);
+  if(cur().cards.length >= 5){ log(`<b>${cur().name}</b> has ${cur().cards.length} cards and must trade a set.`); openCards(true); }
+  render();
+}
+function nextPhase(){
+  if(S.phase==="reinforce"){ S.phase="attack"; sel=null; }
+  else if(S.phase==="attack"){ S.phase="fortify"; sel=null; atkTarget=null; hideBattle(); }
+  else if(S.phase==="fortify"){ endTurn(); return; }
+  render();
+}
+function endTurn(){
+  if(S.conquered){
+    if(S.deck.length===0){ S.deck = shuffle(S.discard); S.discard = []; }
+    if(S.deck.length){ cur().cards.push(S.deck.pop()); log(`<b>${cur().name}</b> conquered territory this turn and draws a card.`); }
+  }
+  sel=null; atkTarget=null; hideBattle();
+  do{ S.current = (S.current+1)%S.players.length; }while(!cur().alive);
+  startTurn();
+}
+
+/* ---------------- Clicking territories ---------------- */
+function clickTerr(t, ev){
+  if(!S || S.phase==="over") return;
+  const d = S.terr[t];
+  if(S.phase==="placement"){
+    if(d.owner!==S.current || S.toPlace[S.current]<=0) return;
+    const n = Math.min(ev.shiftKey?5:1, S.toPlace[S.current]);
+    d.armies+=n; S.toPlace[S.current]-=n;
+    advancePlacement();
+  } else if(S.reinf>0){ // placing reinforcements (any phase where owed armies exist, incl. forced trades)
+    if(d.owner!==S.current) return;
+    const n = Math.min(ev.shiftKey?S.reinf:1, S.reinf);
+    d.armies+=n; S.reinf-=n;
+    if(S.reinf===0 && S.phase==="reinforce") log(`<b>${cur().name}</b> finished placing reinforcements.`);
+  } else if(S.phase==="attack"){
+    if(pendingConquest) return;
+    if(d.owner===S.current){ sel = d.armies>1 ? t : null; atkTarget=null; hideBattle(); }
+    else if(sel && TERR[sel].adj.includes(t)){ atkTarget=t; showBattle(); }
+  } else if(S.phase==="fortify"){
+    if(d.owner!==S.current) return;
+    if(!sel){ if(d.armies>1) sel=t; }
+    else if(t===sel){ sel=null; }
+    else if(TERR[sel].adj.includes(t)) askFortify(sel,t);
+    else if(d.armies>1) sel=t;
+  }
+  render();
+}
+function advancePlacement(){
+  if(S.toPlace.every(x=>x<=0)){ log(`All armies placed — the war begins!`); S.current=0; startTurn(); return; }
+  // rotate to next player who still has armies to place
+  do{ S.current=(S.current+1)%S.players.length; }while(S.toPlace[S.current]<=0);
+}
+function autoPlace(){
+  if(S.phase==="placement"){
+    S.players.forEach((_,p)=>{
+      const mine = terrOf(p);
+      while(S.toPlace[p]>0){ S.terr[mine[Math.floor(Math.random()*mine.length)]].armies++; S.toPlace[p]--; }
+    });
+    log(`Remaining starting armies auto-placed randomly.`);
+    S.current=0; startTurn();
+  } else if(S.reinf>0){
+    const mine = terrOf(S.current);
+    while(S.reinf>0){ S.terr[mine[Math.floor(Math.random()*mine.length)]].armies++; S.reinf--; }
+    log(`<b>${cur().name}</b> auto-placed reinforcements.`); render();
+  }
+}
+
+/* ---------------- Battle ---------------- */
+function maxAtkDice(){ return Math.min(3, S.terr[sel].armies-1); }
+function showBattle(){
+  const bp=$("battlePanel"); bp.style.display="block";
+  $("battleTitle").innerHTML = `<span>⚔️ ${TERR[sel].name} → ${TERR[atkTarget].name}</span>`;
+  const selEl=$("diceSel"); selEl.innerHTML="";
+  for(let i=maxAtkDice(); i>=1; i--) selEl.add(new Option(i,i));
+  $("atkDice").innerHTML=""; $("defDice").innerHTML="";
+}
+function hideBattle(){ $("battlePanel").style.display="none"; }
+function doRoll(silent){
+  const a=S.terr[sel], d=S.terr[atkTarget];
+  const nA = silent ? maxAtkDice() : Math.min(+$("diceSel").value, maxAtkDice());
+  const nD = Math.min(2, d.armies);
+  const ra = roll(nA), rd = roll(nD);
+  let lostA=0, lostD=0;
+  for(let i=0;i<Math.min(nA,nD);i++){ if(ra[i]>rd[i]) lostD++; else lostA++; }
+  a.armies-=lostA; d.armies-=lostD;
+  $("atkDice").innerHTML = `<span style="width:64px;color:var(--muted)">Attack</span>`+ra.map((v,i)=>`<span class="die ${i<Math.min(nA,nD)?(v>rd[i]?'win':'lose'):''}">${v}</span>`).join("");
+  $("defDice").innerHTML = `<span style="width:64px;color:var(--muted)">Defend</span>`+rd.map((v,i)=>`<span class="die def ${i<Math.min(nA,nD)?(v>=ra[i]?'win':'lose'):''}">${v}</span>`).join("");
+  log(`⚔️ ${TERR[sel].name} [${ra.join(",")}] vs ${TERR[atkTarget].name} [${rd.join(",")}] — attacker loses ${lostA}, defender loses ${lostD}.`);
+  if(d.armies<=0){ conquer(nA); return true; }
+  if(a.armies<=1){ log(`Attack from ${TERR[sel].name} exhausted.`); atkTarget=null; hideBattle(); }
+  render(); return d.armies<=0;
+}
+function blitz(){
+  let guard=200;
+  while(guard-- && S.terr[sel] && atkTarget && S.terr[sel].armies>1 && S.terr[atkTarget]){
+    if(doRoll(true)) break;
+    if(!atkTarget) break;
+  }
+}
+function conquer(minMove){
+  const from=sel, to=atkTarget, loser=S.terr[to].owner;
+  S.terr[to].owner=S.current; S.conquered=true;
+  log(`🏳️ <b>${cur().name}</b> conquered <b>${TERR[to].name}</b>!`);
+  pendingConquest = {from,to,min:Math.min(minMove,S.terr[from].armies-1)};
+  hideBattle();
+  // eliminated?
+  if(terrOf(loser).length===0){
+    const lp=S.players[loser]; lp.alive=false;
+    log(`💀 <b>${lp.name}</b> has been eliminated! ${lp.cards.length?`<b>${cur().name}</b> takes their ${lp.cards.length} card(s).`:""}`);
+    cur().cards.push(...lp.cards); lp.cards=[];
+  }
+  if(S.players.filter(p=>p.alive).length===1){ win(); return; }
+  askMoveIn();
+}
+function askMoveIn(){
+  const {from,to,min}=pendingConquest;
+  const max=S.terr[from].armies-1;
+  openModal(`
+    <h2>Occupy ${TERR[to].name}</h2>
+    <p>Move armies from ${TERR[from].name} (must leave 1 behind). Minimum: ${min}.</p>
+    <input type="range" id="mvR" min="${min}" max="${max}" value="${max}" oninput="document.getElementById('mvN').textContent=this.value">
+    <div style="text-align:center;font-size:20px;font-weight:700"><span id="mvN">${max}</span> armies</div>
+    <div class="mrow"><button class="primary" onclick="confirmMove()">Move</button></div>`);
+}
+window.confirmMove = function(){
+  const n=+$("mvR").value, {from,to}=pendingConquest;
+  S.terr[from].armies-=n; S.terr[to].armies+=n;
+  pendingConquest=null; sel=to; atkTarget=null; closeModal();
+  if(cur().cards.length>=6){ log(`<b>${cur().name}</b> holds ${cur().cards.length} cards and must trade immediately.`); openCards(true); }
+  render();
+};
+function win(){
+  S.phase="over"; pendingConquest=null; closeModal();
+  log(`🏆 <b>${cur().name}</b> HAS CONQUERED THE WORLD!`);
+  openModal(`<div id="winBanner">🏆 <b style="color:${cur().color}">${cur().name}</b> has conquered the world!</div>
+    <div class="mrow"><button class="primary" onclick="location.reload()">Play again</button></div>`);
+  localStorage.removeItem(SAVE_KEY); render();
+}
+
+/* ---------------- Fortify ---------------- */
+function askFortify(from,to){
+  const max=S.terr[from].armies-1;
+  openModal(`
+    <h2>Fortify ${TERR[to].name}</h2>
+    <p>Move armies from ${TERR[from].name}. You may fortify once per turn; this ends your turn.</p>
+    <input type="range" id="ftR" min="1" max="${max}" value="${max}" oninput="document.getElementById('ftN').textContent=this.value">
+    <div style="text-align:center;font-size:20px;font-weight:700"><span id="ftN">${max}</span> armies</div>
+    <div class="mrow"><button onclick="closeModal()">Cancel</button><button class="primary" onclick="confirmFortify('${from}','${to}')">Fortify &amp; End Turn</button></div>`);
+}
+window.confirmFortify = function(from,to){
+  const n=+$("ftR").value;
+  S.terr[from].armies-=n; S.terr[to].armies+=n;
+  log(`<b>${cur().name}</b> fortified ${TERR[to].name} with ${n} armies from ${TERR[from].name}.`);
+  closeModal(); endTurn();
+};
+
+/* ---------------- Cards ---------------- */
+let selCards = [];
+function validSet(cards){
+  const syms = cards.map(c=>c.sym);
+  const wilds = syms.filter(s=>s==="Wild").length;
+  const kinds = new Set(syms.filter(s=>s!=="Wild"));
+  return cards.length===3 && (wilds>0 ? true : kinds.size===1 || kinds.size===3);
+}
+function openCards(forced){
+  selCards=[];
+  const p=cur();
+  const mustTrade = forced || (S.phase==="reinforce" && p.cards.length>=5) || p.cards.length>=6;
+  const renderBox = ()=>{
+    const html = p.cards.map((c,i)=>`<div class="card ${selCards.includes(i)?'selc':''}" onclick="toggleCard(${i})">
+      <span class="sym">${SYM_ICON[c.sym]}</span><span>${c.sym}</span><span style="color:var(--muted)">${c.terr?TERR[c.terr].name:"Wild"}</span></div>`).join("") || "<p>No cards yet. Conquer at least one territory in a turn to earn a card.</p>";
+    $("genModal").innerHTML = `<h2>Your Cards — ${p.name}</h2>
+      <p>Trade a set of 3 (three of a kind, one of each, or with a wild). Next set is worth <b>${tradeValue()} armies</b>.
+      ${mustTrade?'<b style="color:#f87171">You must trade before continuing.</b>':''}
+      ${S.phase!=="reinforce"&&!mustTrade?'(Sets can only be traded during the Reinforce phase.)':''}</p>
+      <div id="cardsBox">${html}</div>
+      <div class="mrow">
+        ${mustTrade?"":'<button onclick="closeModal()">Close</button>'}
+        <button class="primary" id="btnTrade" onclick="tradeSelected()">Trade Set</button>
+      </div>`;
+    $("btnTrade").disabled = !(validSet(selCards.map(i=>p.cards[i])) && (S.phase==="reinforce"||mustTrade));
+  };
+  window.toggleCard = i=>{
+    selCards = selCards.includes(i) ? selCards.filter(x=>x!==i) : (selCards.length<3?[...selCards,i]:selCards);
+    renderBox();
+  };
+  window.tradeSelected = ()=>{
+    const cards = selCards.map(i=>p.cards[i]);
+    if(!validSet(cards)) return;
+    const v = tradeValue(); S.tradeCount++;
+    p.cards = p.cards.filter((_,i)=>!selCards.includes(i));
+    S.discard.push(...cards);
+    S.reinf += v;
+    let msg = `<b>${p.name}</b> traded a set for ${v} armies.`;
+    const match = cards.find(c=>c.terr && S.terr[c.terr].owner===S.current);
+    if(match){ S.terr[match.terr].armies+=2; msg+=` +2 bonus armies on ${TERR[match.terr].name}.`; }
+    log(msg);
+    if(p.cards.length>=5 && (S.phase==="reinforce"||p.cards.length>=6)){ openCards(true); render(); return; }
+    closeModal(); render();
+  };
+  renderBox(); $("genOv").classList.add("show");
+}
+
+/* ---------------- Modal helpers ---------------- */
+function openModal(html){ $("genModal").innerHTML=html; $("genOv").classList.add("show"); }
+window.closeModal = function(){ $("genOv").classList.remove("show"); };
+function log(msg){ const d=document.createElement("span"); d.className="lt"; d.innerHTML=msg; $("log").prepend(d); }
+
+/* ---------------- Rendering ---------------- */
+function buildMap(){
+  const svg=$("map"); let edges="", nodes="";
+  const seen=new Set();
+  T.forEach(([id,,,x,y,adj])=>adj.forEach(b=>{
+    const k=[id,b].sort().join("|"); if(seen.has(k))return; seen.add(k);
+    if(id==="alaska"&&b==="kamchatka"||id==="kamchatka"&&b==="alaska"){
+      edges+=`<line class="edge" x1="${TERR.alaska.x}" y1="${TERR.alaska.y}" x2="-5" y2="${TERR.alaska.y}"/><line class="edge" x1="${TERR.kamchatka.x}" y1="${TERR.kamchatka.y}" x2="1005" y2="${TERR.kamchatka.y}"/>`;
+    } else edges+=`<line class="edge" x1="${x}" y1="${y}" x2="${TERR[b].x}" y2="${TERR[b].y}"/>`;
+  }));
+  T.forEach(([id,name,cont,x,y])=>{
+    nodes+=`<g class="terr" id="g-${id}">
+      <circle cx="${x}" cy="${y}" r="17" fill="#555"/>
+      <circle cx="${x}" cy="${y}" r="21" fill="none" stroke="${CONTINENTS[cont].color}" stroke-width="1.6" opacity=".8" pointer-events="none"/>
+      <text class="army" x="${x}" y="${y+5}">0</text>
+      <text class="tname" x="${x}" y="${y+33}">${name}</text></g>`;
+  });
+  svg.innerHTML = edges + CONT_LABELS.map(([n,x,y])=>`<text class="contLabel" x="${x}" y="${y}">${n}</text>`).join("") + nodes;
+  T.forEach(([id])=>$("g-"+id).addEventListener("click",e=>clickTerr(id,e)));
+}
+function render(){
+  if(!S) return;
+  // map
+  T.forEach(([id])=>{
+    const g=$("g-"+id), d=S.terr[id];
+    g.querySelector("circle").setAttribute("fill", S.players[d.owner].color);
+    g.querySelector(".army").textContent=d.armies;
+    g.classList.toggle("sel", sel===id);
+    const targetable = S.phase==="attack" && sel && !atkTarget && TERR[sel].adj.includes(id) && d.owner!==S.current;
+    g.classList.toggle("target", targetable || atkTarget===id);
+  });
+  // header
+  $("turnDot").style.background=cur().color; $("turnName").textContent=cur().name;
+  const phaseNames={placement:"Initial Placement",reinforce:"Reinforce",attack:"Attack",fortify:"Fortify",over:"Game Over"};
+  $("phaseChip").textContent=phaseNames[S.phase];
+  $("btnCards").textContent=`Cards (${cur().cards.length})`;
+  let msg="", act=null;
+  if(S.phase==="placement"){ msg=`${cur().name}: place ${S.toPlace[S.current]} more armies (click your territories; Shift-click = 5).`; }
+  else if(S.reinf>0){ msg=`${cur().name}: place ${S.reinf} reinforcement${S.reinf>1?"s":""} (Shift-click places all).`; }
+  else if(S.phase==="reinforce"){ msg=`Reinforcements placed.`; act="Go to Attack ⚔️"; }
+  else if(S.phase==="attack"){ msg = sel? (atkTarget?`Rolling: ${TERR[sel].name} vs ${TERR[atkTarget].name}.`:`Select an adjacent enemy territory to attack from ${TERR[sel].name}.`) : `Select your territory (2+ armies) to attack from, or end the attack phase.`; act="End Attacks →"; }
+  else if(S.phase==="fortify"){ msg = sel? `Select an adjacent friendly territory to move armies into.` : `Optionally move armies once between adjacent friendly territories, or end your turn.`; act="End Turn ✔"; }
+  $("phaseMsg").innerHTML=msg;
+  const ba=$("btnAction");
+  if(act && S.reinf===0){ ba.style.display="inline-block"; ba.textContent=act; } else ba.style.display="none";
+  $("btnAuto").style.display = (S.phase==="placement"||S.reinf>0) ? "inline-block":"none";
+  // players panel
+  $("players").innerHTML = S.players.map((p,i)=>`<div class="prow ${i===S.current?'current':''} ${p.alive?'':'dead'}">
+    <span class="dot" style="background:${p.color}"></span><span class="nm">${p.name}</span>
+    <span class="st">${terrOf(i).length}🗺 ${terrOf(i).reduce((s,t)=>s+S.terr[t].armies,0)}⚔ ${p.cards.length}🂠</span></div>`).join("");
+  if(S.phase!=="over") localStorage.setItem(SAVE_KEY, JSON.stringify(S));
+}
+
+/* ---------------- Rules modal ---------------- */
+function showRules(){
+  openModal(`<h2>How to Play</h2><p style="max-height:60vh">
+  <b>Goal:</b> conquer all 42 territories.<br><br>
+  <b>Setup:</b> territories are dealt randomly with 1 army each; players alternate placing their remaining starting armies (2p: 40 each, 3p: 35, 4p: 30, 5p: 25, 6p: 20).<br><br>
+  <b>Reinforce:</b> at the start of your turn you receive max(3, territories ÷ 3) armies, plus continent bonuses (N. America 5, S. America 2, Europe 5, Africa 3, Asia 7, Australia 2), plus armies from trading card sets. With 5+ cards you must trade.<br><br>
+  <b>Attack:</b> attack adjacent enemy territories from a territory with 2+ armies. Attacker rolls up to 3 dice (needs that many spare armies), defender rolls up to 2. Highest dice are compared pairwise; ties go to the defender. After conquering, move at least as many armies as dice you rolled (leave 1 behind). Conquer at least one territory in your turn to draw a card at the end. Eliminate a player to take their cards (must trade down if you then hold 6+).<br><br>
+  <b>Cards:</b> sets of 3 (same symbol, one of each, or with a wild) are worth 4, 6, 8, 10, 12, 15, then +5 each. If a traded card shows a territory you own, it gets +2 armies.<br><br>
+  <b>Fortify:</b> once at the end of your turn, move any number of armies between two adjacent friendly territories.</p>
+  <div class="mrow"><button class="primary" onclick="closeModal()">Close</button></div>`);
+}
+
+/* ---------------- Setup screen ---------------- */
+function setupRows(){
+  const n=+$("numPlayers").value;
+  $("nameRows").innerHTML = Array.from({length:n},(_,i)=>`<div class="setupRow">
+    <span class="dot" style="background:${PLAYER_COLORS[i]}"></span>
+    <input type="text" id="pn${i}" value="Player ${i+1}" maxlength="16"></div>`).join("");
+}
+$("numPlayers").addEventListener("change",setupRows);
+$("btnStart").addEventListener("click",()=>{
+  const n=+$("numPlayers").value;
+  const names=Array.from({length:n},(_,i)=>$("pn"+i).value.trim()||`Player ${i+1}`);
+  $("setupOv").classList.remove("show");
+  newGame(names);
+});
+$("btnResume").addEventListener("click",()=>{
+  S=JSON.parse(localStorage.getItem(SAVE_KEY));
+  $("setupOv").classList.remove("show");
+  log("Game resumed from save."); render();
+});
+$("btnNew").addEventListener("click",()=>{ if(!S || confirm("Abandon the current game?")){ localStorage.removeItem(SAVE_KEY); location.reload(); } });
+$("btnHelp").addEventListener("click",showRules);
+$("btnCards").addEventListener("click",()=>openCards(false));
+$("btnAction").addEventListener("click",nextPhase);
+$("btnAuto").addEventListener("click",autoPlace);
+$("btnRoll").addEventListener("click",()=>doRoll(false));
+$("btnBlitz").addEventListener("click",blitz);
+$("btnCancelAtk").addEventListener("click",()=>{ atkTarget=null; sel=null; hideBattle(); render(); });
+
+buildMap(); setupRows();
+try{ if(localStorage.getItem(SAVE_KEY)) $("btnResume").style.display="inline-block"; }catch(e){}
+window.G = ()=>S; // debug/testing hook
+</script>
+</body>
+</html>
