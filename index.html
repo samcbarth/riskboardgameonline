@@ -24,8 +24,25 @@
   button.primary:hover:not(:disabled){background:#2563eb;}
   button.danger{background:#7f1d1d; border-color:#b91c1c;}
   main{flex:1; display:flex; min-height:0;}
-  #mapWrap{flex:1; background:var(--sea); position:relative; min-width:0;}
+  #mapWrap{flex:1; position:relative; min-width:0; background:radial-gradient(ellipse at 50% 38%, #1e3d5c 0%, #132b44 55%, #0c1c2e 100%); box-shadow:inset 0 0 90px #000c;}
   #mapWrap svg{width:100%; height:100%; display:block;}
+  #legend{position:absolute; left:12px; bottom:10px; font-size:13px; color:#cfe3ff; background:#0a141fb0; border:1px solid #31415466; border-radius:8px; padding:5px 12px; pointer-events:none;}
+  /* 3D dice */
+  #diceStage{position:absolute; left:50%; bottom:22px; transform:translateX(-50%); display:none; gap:30px; align-items:flex-end; pointer-events:none; z-index:10; background:#0a141fcc; border:1px solid #31415466; padding:12px 22px 16px; border-radius:14px;}
+  #diceStage.show{display:flex;}
+  .dgroup{text-align:center;}
+  .dlbl{color:#cfe3ff; font-size:11px; letter-spacing:1px; text-transform:uppercase; margin-bottom:8px;}
+  .drow{display:flex; gap:14px;}
+  .dcube{width:46px; height:46px; perspective:420px; border-radius:10px;}
+  .dcube.winD{box-shadow:0 0 0 3px #22c55e;}
+  .dcube.loseD{box-shadow:0 0 0 3px #ef4444;}
+  .dcube.bounce{animation:dbounce ease-out both;}
+  @keyframes dbounce{0%{transform:translateY(-80px) rotate(6deg)}55%{transform:translateY(0)}72%{transform:translateY(-12px)}100%{transform:translateY(0)}}
+  .cube{width:100%; height:100%; position:relative; transform-style:preserve-3d;}
+  .face{position:absolute; inset:0; background:#f4eee0; border:1px solid #b9b09a; border-radius:8px; display:grid; grid-template:repeat(3,1fr)/repeat(3,1fr); padding:6px; box-shadow:inset 0 0 8px #0002;}
+  .face.red{background:#b8352a; border-color:#6f1a12;}
+  .pip{width:7px; height:7px; border-radius:50%; background:#20242c; place-self:center;}
+  .face.red .pip{background:#fff;}
   aside{width:300px; background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0;}
   aside h3{font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); padding:10px 12px 4px;}
   #players{padding:0 12px;}
@@ -35,24 +52,22 @@
   .prow .st{color:var(--muted); font-size:12px;}
   .prow.dead{opacity:.35; text-decoration:line-through;}
   #battlePanel{padding:8px 12px; border-top:1px solid var(--line); font-size:13px; display:none;}
-  .diceRow{display:flex; gap:6px; margin:6px 0; align-items:center;}
-  .die{width:30px; height:30px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; background:#fff; color:#111;}
-  .die.def{background:#111; color:#fff; border:1px solid #555;}
-  .die.win{outline:2px solid #22c55e;}
-  .die.lose{outline:2px solid #ef4444;}
   #log{flex:1; overflow-y:auto; padding:6px 12px 12px; font-size:12px; line-height:1.55; color:var(--muted); border-top:1px solid var(--line);}
   #log b{color:var(--text);}
   #log .lt{display:block; padding:2px 0; border-bottom:1px dashed #263243;}
   /* map elements */
-  .edge{stroke:#3d5570; stroke-width:1.2; opacity:.55;}
-  .terr circle{stroke:#0b0f14; stroke-width:2; cursor:pointer; transition:r .1s;}
-  .terr:hover circle{stroke:#fff;}
-  .terr.sel circle{stroke:#fff; stroke-width:3;}
-  .terr.target circle{stroke:#ffd166; stroke-width:3; stroke-dasharray:4 3;}
+  .edge{stroke:#cfe3ff; stroke-width:1.3; opacity:.3; stroke-dasharray:5 5;}
+  .cont{opacity:.32; stroke-width:2.5; stroke-linejoin:round;}
+  .contStroke{fill:none; opacity:.55; stroke-width:2;}
+  .terr circle.disc{stroke:#0b0f14; stroke-width:2; cursor:pointer; filter:drop-shadow(0 2px 2px #0009);}
+  .terr:hover circle.disc{stroke:#fff;}
+  .terr.sel circle.disc{stroke:#fff; stroke-width:3;}
+  .terr.target circle.disc{stroke:#ffd166; stroke-width:3; stroke-dasharray:4 3;}
   .terr text{pointer-events:none; text-anchor:middle;}
   .terr .army{font-size:13px; font-weight:800; fill:#fff; paint-order:stroke; stroke:#000; stroke-width:3px;}
-  .terr .tname{font-size:8.5px; fill:#c8d6e5; paint-order:stroke; stroke:#0b0f14; stroke-width:2.5px;}
-  .contLabel{font-size:13px; font-weight:700; fill:#ffffff22; letter-spacing:2px; text-anchor:middle; pointer-events:none;}
+  .terr .units{font-size:10px; fill:#ffe9b8; paint-order:stroke; stroke:#0b0f14; stroke-width:2.2px;}
+  .terr .tname{font-size:8.5px; font-family:Georgia,serif; fill:#d8e4f0; paint-order:stroke; stroke:#0b0f14; stroke-width:2.5px;}
+  .contLabel{font-size:16px; font-weight:700; font-family:Georgia,serif; font-style:italic; letter-spacing:3px; text-anchor:middle; pointer-events:none; opacity:.5; paint-order:stroke; stroke:#0b0f14; stroke-width:3px;}
   /* modal */
   .overlay{position:fixed; inset:0; background:#000a; display:none; align-items:center; justify-content:center; z-index:50;}
   .overlay.show{display:flex;}
@@ -86,14 +101,14 @@
 <main>
   <div id="mapWrap">
     <svg viewBox="0 0 1000 620" id="map"></svg>
+    <div id="legend">♟ = 1 &nbsp;&nbsp; ♞ = 5 &nbsp;&nbsp; ♜ = 10</div>
+    <div id="diceStage"></div>
   </div>
   <aside>
     <h3>Players</h3>
     <div id="players"></div>
     <div id="battlePanel">
       <div style="display:flex;justify-content:space-between;font-weight:600" id="battleTitle"></div>
-      <div class="diceRow" id="atkDice"></div>
-      <div class="diceRow" id="defDice"></div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
         <label style="font-size:12px">Dice: <select id="diceSel"></select></label>
         <button id="btnRoll" class="primary">Roll</button>
@@ -180,11 +195,11 @@ const T = [
  ["eaustralia","E. Australia","AU",885,485,["newguinea","waustralia"]],
 ];
 const TERR = {}; T.forEach(([id,name,cont,x,y,adj])=>TERR[id]={id,name,cont,x,y,adj});
-const CONT_LABELS = [["NORTH AMERICA",170,45],["SOUTH AMERICA",300,545],["EUROPE",470,60],["AFRICA",460,560],["ASIA",720,30],["AUSTRALIA",860,555]];
+const CONT_LABELS = [["NORTH AMERICA",170,45],["SOUTH AMERICA",300,585],["EUROPE",470,60],["AFRICA",450,585],["ASIA",720,30],["AUSTRALIA",860,580]];
 const PLAYER_COLORS = ["#e74c3c","#3498db","#2ecc71","#f1c40f","#9b59b6","#e67e22"];
 const START_ARMIES = {2:40,3:35,4:30,5:25,6:20};
 const TRADE_VALUES = [4,6,8,10,12,15]; // then +5 each
-const SYMBOLS = ["Infantry","Cavalry","Artillery"]; const SYM_ICON = {Infantry:"🚶",Cavalry:"🐎",Artillery:"🎖️",Wild:"🃏"};
+const SYMBOLS = ["Infantry","Cavalry","Artillery"]; const SYM_ICON = {Infantry:"♟",Cavalry:"♞",Artillery:"♜",Wild:"🃏"};
 const SAVE_KEY = "risk-hotseat-save-v1";
 
 /* ---------------- State ---------------- */
@@ -302,34 +317,86 @@ function autoPlace(){
 }
 
 /* ---------------- Battle ---------------- */
+let rolling=false;
 function maxAtkDice(){ return Math.min(3, S.terr[sel].armies-1); }
 function showBattle(){
   const bp=$("battlePanel"); bp.style.display="block";
   $("battleTitle").innerHTML = `<span>⚔️ ${TERR[sel].name} → ${TERR[atkTarget].name}</span>`;
   const selEl=$("diceSel"); selEl.innerHTML="";
   for(let i=maxAtkDice(); i>=1; i--) selEl.add(new Option(i,i));
-  $("atkDice").innerHTML=""; $("defDice").innerHTML="";
+  $("diceStage").classList.remove("show");
 }
-function hideBattle(){ $("battlePanel").style.display="none"; }
-function doRoll(silent){
+function hideBattle(){ $("battlePanel").style.display="none"; $("diceStage").classList.remove("show"); }
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+// 3D dice: face layout front=1 back=6 right=3 left=4 top=2 bottom=5
+const PIPS = {1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,4,7,3,6,9]};
+const FACE_T = ["translateZ(23px)","rotateY(180deg) translateZ(23px)","rotateY(90deg) translateZ(23px)","rotateY(-90deg) translateZ(23px)","rotateX(90deg) translateZ(23px)","rotateX(-90deg) translateZ(23px)"];
+const FACE_V = [1,6,3,4,2,5];
+const SHOW_T = {1:[0,0],2:[-90,0],3:[0,-90],4:[0,90],5:[90,0],6:[0,180]};
+function makeDie(red){
+  const w=document.createElement("div"); w.className="dcube";
+  const c=document.createElement("div"); c.className="cube";
+  FACE_T.forEach((tf,i)=>{
+    const f=document.createElement("div"); f.className="face"+(red?" red":""); f.style.transform=tf;
+    for(let cell=1;cell<=9;cell++){ const p=document.createElement("span"); if(PIPS[FACE_V[i]].includes(cell)) p.className="pip"; f.appendChild(p); }
+    c.appendChild(f);
+  });
+  w.appendChild(c); return w;
+}
+async function animateDice(ra, rd, dur){
+  const st=$("diceStage"); st.innerHTML=""; st.classList.add("show");
+  const mk=(label,vals,red)=>{
+    const g=document.createElement("div"); g.className="dgroup";
+    g.innerHTML=`<div class="dlbl">${label}</div>`;
+    const row=document.createElement("div"); row.className="drow";
+    const cubes=vals.map(()=>{ const d=makeDie(red); row.appendChild(d); return d; });
+    g.appendChild(row); st.appendChild(g); return cubes;
+  };
+  const ca=mk("Attacker",ra,true), cd=mk("Defender",rd,false);
+  const all=[...ca.map((c,i)=>[c,ra[i]]), ...cd.map((c,i)=>[c,rd[i]])];
+  all.forEach(([w,v])=>{
+    const cube=w.querySelector(".cube");
+    cube.style.transition="none";
+    cube.style.transform=`rotateX(${Math.random()*360|0}deg) rotateY(${Math.random()*360|0}deg) rotateZ(${Math.random()*360|0}deg)`;
+    w.style.animationDuration=dur+"ms"; w.classList.add("bounce");
+  });
+  st.getBoundingClientRect(); // reflow
+  all.forEach(([w,v])=>{
+    const cube=w.querySelector(".cube");
+    const [rx,ry]=SHOW_T[v];
+    const sx=(2+(Math.random()*2|0))*360, sy=(2+(Math.random()*2|0))*360;
+    cube.style.transition=`transform ${dur}ms cubic-bezier(.15,.65,.3,1.02)`;
+    cube.style.transform=`rotateX(${rx+sx}deg) rotateY(${ry+sy}deg)`;
+  });
+  await sleep(dur+60);
+  const n=Math.min(ra.length,rd.length);
+  for(let i=0;i<n;i++){
+    ca[i].classList.add(ra[i]>rd[i]?"winD":"loseD");
+    cd[i].classList.add(rd[i]>=ra[i]?"winD":"loseD");
+  }
+  await sleep(dur>500?550:220);
+}
+async function doRoll(auto){
+  if(rolling || !sel || !atkTarget) return false;
   const a=S.terr[sel], d=S.terr[atkTarget];
-  const nA = silent ? maxAtkDice() : Math.min(+$("diceSel").value, maxAtkDice());
+  const nA = auto ? maxAtkDice() : Math.min(+$("diceSel").value, maxAtkDice());
   const nD = Math.min(2, d.armies);
   const ra = roll(nA), rd = roll(nD);
   let lostA=0, lostD=0;
   for(let i=0;i<Math.min(nA,nD);i++){ if(ra[i]>rd[i]) lostD++; else lostA++; }
+  rolling=true;
+  try{ await animateDice(ra, rd, auto?420:850); } finally { rolling=false; }
   a.armies-=lostA; d.armies-=lostD;
-  $("atkDice").innerHTML = `<span style="width:64px;color:var(--muted)">Attack</span>`+ra.map((v,i)=>`<span class="die ${i<Math.min(nA,nD)?(v>rd[i]?'win':'lose'):''}">${v}</span>`).join("");
-  $("defDice").innerHTML = `<span style="width:64px;color:var(--muted)">Defend</span>`+rd.map((v,i)=>`<span class="die def ${i<Math.min(nA,nD)?(v>=ra[i]?'win':'lose'):''}">${v}</span>`).join("");
   log(`⚔️ ${TERR[sel].name} [${ra.join(",")}] vs ${TERR[atkTarget].name} [${rd.join(",")}] — attacker loses ${lostA}, defender loses ${lostD}.`);
   if(d.armies<=0){ conquer(nA); return true; }
   if(a.armies<=1){ log(`Attack from ${TERR[sel].name} exhausted.`); atkTarget=null; hideBattle(); }
-  render(); return d.armies<=0;
+  render(); return false;
 }
-function blitz(){
-  let guard=200;
-  while(guard-- && S.terr[sel] && atkTarget && S.terr[sel].armies>1 && S.terr[atkTarget]){
-    if(doRoll(true)) break;
+async function blitz(){
+  if(rolling) return;
+  let guard=100;
+  while(guard-- && sel && atkTarget && S.terr[sel].armies>1){
+    if(await doRoll(true)) break;
     if(!atkTarget) break;
   }
 }
@@ -443,8 +510,33 @@ window.closeModal = function(){ $("genOv").classList.remove("show"); };
 function log(msg){ const d=document.createElement("span"); d.className="lt"; d.innerHTML=msg; $("log").prepend(d); }
 
 /* ---------------- Rendering ---------------- */
+function unitStr(n){
+  const part=(g,k)=>k===0?"":(k<=3?g.repeat(k):g+k);
+  return part("♜",Math.floor(n/10))+part("♞",Math.floor(n%10/5))+part("♟",n%5);
+}
+function contBlob(ids){
+  // convex hull (monotone chain) of the continent's nodes, pushed outward and smoothed
+  let pts=ids.map(t=>[TERR[t].x,TERR[t].y]).sort((p,q)=>p[0]-q[0]||p[1]-q[1]);
+  const cross=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);
+  const lo=[],up=[];
+  for(const p of pts){ while(lo.length>=2&&cross(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop(); lo.push(p); }
+  for(const p of [...pts].reverse()){ while(up.length>=2&&cross(up[up.length-2],up[up.length-1],p)<=0)up.pop(); up.push(p); }
+  let h=lo.slice(0,-1).concat(up.slice(0,-1));
+  const cx=h.reduce((s,p)=>s+p[0],0)/h.length, cy=h.reduce((s,p)=>s+p[1],0)/h.length;
+  h=h.map(([x,y])=>{ const dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy)||1; return [x+dx/l*33, y+dy/l*33]; });
+  const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const n=h.length, m0=mid(h[0],h[1]);
+  let d=`M${m0[0].toFixed(1)},${m0[1].toFixed(1)}`;
+  for(let i=1;i<=n;i++){ const p=h[i%n], m=mid(p,h[(i+1)%n]); d+=` Q${p[0].toFixed(1)},${p[1].toFixed(1)} ${m[0].toFixed(1)},${m[1].toFixed(1)}`; }
+  return d+"Z";
+}
 function buildMap(){
-  const svg=$("map"); let edges="", nodes="";
+  const svg=$("map"); let edges="", nodes="", blobs="";
+  const defs=`<defs><pattern id="seagrid" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0H0V42" fill="none" stroke="#ffffff" stroke-opacity=".05"/></pattern></defs><rect width="1000" height="620" fill="url(#seagrid)"/>`;
+  for(const c in CONTINENTS){
+    const d=contBlob(T.filter(t=>t[2]===c).map(t=>t[0])), col=CONTINENTS[c].color;
+    blobs+=`<path class="cont" d="${d}" fill="${col}" stroke="${col}"/><path class="contStroke" d="${d}" stroke="${col}"/>`;
+  }
   const seen=new Set();
   T.forEach(([id,,,x,y,adj])=>adj.forEach(b=>{
     const k=[id,b].sort().join("|"); if(seen.has(k))return; seen.add(k);
@@ -454,12 +546,13 @@ function buildMap(){
   }));
   T.forEach(([id,name,cont,x,y])=>{
     nodes+=`<g class="terr" id="g-${id}">
-      <circle cx="${x}" cy="${y}" r="17" fill="#555"/>
+      <circle class="disc" cx="${x}" cy="${y}" r="17" fill="#555"/>
       <circle cx="${x}" cy="${y}" r="21" fill="none" stroke="${CONTINENTS[cont].color}" stroke-width="1.6" opacity=".8" pointer-events="none"/>
       <text class="army" x="${x}" y="${y+5}">0</text>
-      <text class="tname" x="${x}" y="${y+33}">${name}</text></g>`;
+      <text class="units" x="${x}" y="${y+32}"></text>
+      <text class="tname" x="${x}" y="${y+43}">${name}</text></g>`;
   });
-  svg.innerHTML = edges + CONT_LABELS.map(([n,x,y])=>`<text class="contLabel" x="${x}" y="${y}">${n}</text>`).join("") + nodes;
+  svg.innerHTML = defs + blobs + edges + CONT_LABELS.map(([n,x,y])=>`<text class="contLabel" x="${x}" y="${y}" fill="${{NA:"#e0b877",SA:"#e08a80",EU:"#8fb4e8",AF:"#d1af77",AS:"#84cfa2",AU:"#c99bd6"}[Object.keys(CONTINENTS).find(k=>CONTINENTS[k].name.toUpperCase().startsWith(n.split(" ")[0]))||"NA"]}">${n}</text>`).join("") + nodes;
   T.forEach(([id])=>$("g-"+id).addEventListener("click",e=>clickTerr(id,e)));
 }
 function render(){
@@ -469,6 +562,7 @@ function render(){
     const g=$("g-"+id), d=S.terr[id];
     g.querySelector("circle").setAttribute("fill", S.players[d.owner].color);
     g.querySelector(".army").textContent=d.armies;
+    g.querySelector(".units").textContent=unitStr(d.armies);
     g.classList.toggle("sel", sel===id);
     const targetable = S.phase==="attack" && sel && !atkTarget && TERR[sel].adj.includes(id) && d.owner!==S.current;
     g.classList.toggle("target", targetable || atkTarget===id);
